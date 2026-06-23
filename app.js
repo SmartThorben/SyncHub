@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const errorsList = document.getElementById('errors-list');
   const errorsStatus = document.getElementById('errors-status');
   const ERRORS_API_URL = 'https://sync-hub.vercel.app/api/error';
+  const ERROR_POLL_INTERVAL = 15000;
+  let knownErrorKeys = new Set();
+  let errorPollIntervalId = null;
 
   // ==========================================
   // HIER DEINE GOOGLE CLIENT ID EINTRAGEN:
@@ -137,6 +140,45 @@ document.addEventListener('DOMContentLoaded', () => {
     errorsList.classList.add('hidden');
   }
 
+  function createErrorKey(error) {
+    const message = error.error || error.message || error.errorMessage || '';
+    const workflow = error.workflow || error.workflowName || '';
+    const node = error.node || error.lastNodeExecuted || '';
+    const timestamp = error.timestamp || error.time || error.receivedAt || '';
+    return `${message}|${workflow}|${node}|${timestamp}`;
+  }
+
+  function showErrorPopup(error) {
+    const popup = document.createElement('div');
+    popup.className = 'toast';
+
+    const message = error.error || error.message || error.errorMessage || 'Neuer n8n Fehler';
+    const workflow = error.workflow || error.workflowName || 'Unbekannt';
+    const timestamp = error.timestamp || error.time || error.receivedAt || 'Unbekannt';
+
+    popup.innerHTML = `
+      <strong>${message}</strong>
+      <div class="toast-field"><span>Workflow:</span><span>${workflow}</span></div>
+      <div class="toast-field"><span>Zeit:</span><span>${timestamp}</span></div>
+      <button type="button" class="toast-close">Schließen</button>
+    `;
+
+    const closeButton = popup.querySelector('.toast-close');
+    closeButton.addEventListener('click', () => popup.remove());
+
+    const container = document.querySelector('.toast-container') || createToastContainer();
+    container.appendChild(popup);
+
+    window.setTimeout(() => popup.remove(), 10000);
+  }
+
+  function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+    return container;
+  }
+
   function renderErrors(errors) {
     errorsList.innerHTML = '';
 
@@ -162,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
     errorsList.classList.remove('hidden');
   }
 
-  async function loadN8nErrors() {
+  async function loadN8nErrors({ announceNew = false } = {}) {
     setErrorsStatus('Lade n8n Fehler...', false);
     clearErrors();
 
@@ -194,17 +236,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (errors.length === 0) {
         setErrorsStatus('Es wurden keine n8n-Fehler gefunden.', false);
+        knownErrorKeys = new Set();
         return;
       }
 
       renderErrors(errors);
+      const currentKeys = errors.map(createErrorKey);
+
+      if (errors.length > 0 && announceNew) {
+        const newErrors = errors.filter((error) => {
+          const key = createErrorKey(error);
+          return !knownErrorKeys.has(key);
+        });
+
+        if (newErrors.length > 0) {
+          showErrorPopup(newErrors[0]);
+        }
+      }
+
+      knownErrorKeys = new Set(currentKeys);
       setErrorsStatus(`Es wurden ${errors.length} n8n Fehler geladen.`, false);
     } catch (error) {
       setErrorsStatus(`Fehler beim Laden der n8n-Fehler: ${error.message}`, true);
     }
   }
 
-  loadErrorsBtn.addEventListener('click', loadN8nErrors);
+  function startErrorPolling() {
+    if (errorPollIntervalId) return;
+    loadN8nErrors({ announceNew: false });
+    errorPollIntervalId = window.setInterval(() => loadN8nErrors({ announceNew: true }), ERROR_POLL_INTERVAL);
+  }
+
+  loadErrorsBtn.addEventListener('click', () => loadN8nErrors({ announceNew: false }));
   clearErrorsBtn.addEventListener('click', () => {
     clearErrors();
     clearErrorsStatus();
