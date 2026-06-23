@@ -109,6 +109,19 @@
         </button>
       </div>
 
+      <section class="errors-panel">
+        <div class="section-header">
+          <span class="section-icon error-icon">!</span>
+          <h2>n8n Fehler</h2>
+        </div>
+        <div class="errors-action">
+          <button type="button" id="load-errors-btn" class="secondary-btn">n8n Fehler laden</button>
+          <button type="button" id="clear-errors-btn" class="secondary-btn">Fehler zurücksetzen</button>
+        </div>
+        <div id="errors-status" class="status-message hidden"></div>
+        <div id="errors-list" class="errors-list hidden"></div>
+      </section>
+
       <div id="status-message" class="status-message hidden"></div>
     </form>
   </main>

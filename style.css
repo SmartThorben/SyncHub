@@ -250,6 +250,54 @@ input::placeholder {
   justify-content: center;
 }
 
+.errors-panel {
+  background: rgba(22, 27, 40, 0.75);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.errors-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.errors-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.error-card {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.95rem;
+  padding: 1rem;
+}
+
+.error-card strong {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #fff;
+  font-size: 0.98rem;
+}
+
+.error-field {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.error-field span:first-child {
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
 .primary-btn {
   background: var(--primary-color);
   color: #fff;

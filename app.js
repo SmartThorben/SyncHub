@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusMessage = document.getElementById('status-message');
   const googleLoginBtn = document.getElementById('google-login-btn');
   const googleTokenInput = document.getElementById('googleToken');
+  const loadErrorsBtn = document.getElementById('load-errors-btn');
+  const clearErrorsBtn = document.getElementById('clear-errors-btn');
+  const errorsList = document.getElementById('errors-list');
+  const errorsStatus = document.getElementById('errors-status');
+  const ERRORS_API_URL = 'https://sync-hub.vercel.app/api/error';
 
   // ==========================================
   // HIER DEINE GOOGLE CLIENT ID EINTRAGEN:
@@ -79,6 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
+    clearErrors();
+    clearErrorsStatus();
+
     try {
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -110,5 +118,95 @@ document.addEventListener('DOMContentLoaded', () => {
       btnText.textContent = 'Synchronisation starten';
       loader.classList.add('hidden');
     }
+  });
+
+  function setErrorsStatus(message, isError = false) {
+    errorsStatus.textContent = message;
+    errorsStatus.className = 'status-message';
+    errorsStatus.classList.add(isError ? 'status-error' : 'status-success');
+    errorsStatus.classList.remove('hidden');
+  }
+
+  function clearErrorsStatus() {
+    errorsStatus.className = 'status-message hidden';
+    errorsStatus.textContent = '';
+  }
+
+  function clearErrors() {
+    errorsList.innerHTML = '';
+    errorsList.classList.add('hidden');
+  }
+
+  function renderErrors(errors) {
+    errorsList.innerHTML = '';
+
+    errors.forEach((error) => {
+      const card = document.createElement('div');
+      card.className = 'error-card';
+
+      const message = error.error || error.message || error.errorMessage || 'Unbekannter Fehler';
+      const workflow = error.workflow || error.workflowName || 'Unbekannt';
+      const node = error.node || error.lastNodeExecuted || 'Unbekannt';
+      const timestamp = error.timestamp || error.time || 'Unbekannt';
+
+      card.innerHTML = `
+        <strong>${message}</strong>
+        <div class="error-field"><span>Workflow</span><span>${workflow}</span></div>
+        <div class="error-field"><span>Node</span><span>${node}</span></div>
+        <div class="error-field"><span>Zeit</span><span>${timestamp}</span></div>
+      `;
+
+      errorsList.appendChild(card);
+    });
+
+    errorsList.classList.remove('hidden');
+  }
+
+  async function loadN8nErrors() {
+    setErrorsStatus('Lade n8n Fehler...', false);
+    clearErrors();
+
+    try {
+      const response = await fetch(ERRORS_API_URL, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server antwortete mit Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      let errors = [];
+
+      if (Array.isArray(data)) {
+        errors = data;
+      } else if (data?.errors && Array.isArray(data.errors)) {
+        errors = data.errors;
+      } else if (data?.error && typeof data.error === 'string') {
+        setErrorsStatus('Keine n8n-Fehler gefunden oder Backend liefert kein Fehler-Array.', false);
+        return;
+      } else if (typeof data === 'object' && Object.keys(data).length > 0) {
+        errors = [data];
+      }
+
+      if (errors.length === 0) {
+        setErrorsStatus('Es wurden keine n8n-Fehler gefunden.', false);
+        return;
+      }
+
+      renderErrors(errors);
+      setErrorsStatus(`Es wurden ${errors.length} n8n Fehler geladen.`, false);
+    } catch (error) {
+      setErrorsStatus(`Fehler beim Laden der n8n-Fehler: ${error.message}`, true);
+    }
+  }
+
+  loadErrorsBtn.addEventListener('click', loadN8nErrors);
+  clearErrorsBtn.addEventListener('click', () => {
+    clearErrors();
+    clearErrorsStatus();
   });
 });
